@@ -598,14 +598,14 @@ nv.utils.sanitizeWidth = function(width, container) {
 Calculate the available height for a chart.
 */
 nv.utils.availableHeight = function(height, container, margin) {
-    return nv.utils.sanitizeHeight(height, container) - margin.top - margin.bottom;
+    return Math.max(0,nv.utils.sanitizeHeight(height, container) - margin.top - margin.bottom);
 };
 
 /*
 Calculate the available width for a chart.
 */
 nv.utils.availableWidth = function(width, container, margin) {
-    return nv.utils.sanitizeWidth(width, container) - margin.left - margin.right;
+    return Math.max(0,nv.utils.sanitizeWidth(width, container) - margin.left - margin.right);
 };
 
 /*
@@ -635,4 +635,60 @@ nv.utils.noData = function(chart, container) {
         .attr('x', x)
         .attr('y', y)
         .text(function(t){ return t; });
+};
+
+/*
+ Wrap long labels.
+ */
+nv.utils.wrapTicks = function (text, width) {
+    text.each(function() {
+        var text = d3.select(this),
+            words = text.text().split(/\s+/).reverse(),
+            word,
+            line = [],
+            lineNumber = 0,
+            lineHeight = 1.1,
+            y = text.attr("y"),
+            dy = parseFloat(text.attr("dy")),
+            tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+        while (word = words.pop()) {
+            line.push(word);
+            tspan.text(line.join(" "));
+            if (tspan.node().getComputedTextLength() > width) {
+                line.pop();
+                tspan.text(line.join(" "));
+                line = [word];
+                tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+            }
+        }
+    });
+};
+
+/*
+Check equality of 2 array
+*/
+nv.utils.arrayEquals = function (array1, array2) {
+    if (array1 === array2)
+        return true;
+
+    if (!array1 || !array2)
+        return false;
+
+    // compare lengths - can save a lot of time 
+    if (array1.length != array2.length)
+        return false;
+
+    for (var i = 0,
+        l = array1.length; i < l; i++) {
+        // Check if we have nested arrays
+        if (array1[i] instanceof Array && array2[i] instanceof Array) {
+            // recurse into the nested arrays
+            if (!nv.arrayEquals(array1[i], array2[i]))
+                return false;
+        } else if (array1[i] != array2[i]) {
+            // Warning - two different object instances will never be equal: {x:20} != {x:20}
+            return false;
+        }
+    }
+    return true;
 };

@@ -38,11 +38,22 @@
             container.append(op);
         }
 
+        function getProps(obj, key) {
+            var props = [];
+            if (obj.hasOwnProperty(key)) {
+                var _obj = obj[key];
+                if (typeof _obj === 'object') {
+                    props.push.apply(props, Object.keys(_obj));
+                }
+            }
+            return props;
+        }
+
         $('body').ready(function () {
             var charts = [
                 'pieChart',
                 'lineChart',
-                'parallelCoordinates',
+                'parallelCoordinatesChart',
                 'scatterChart',
                 'stackedAreaChart',
                 'sparklinePlus',
@@ -76,7 +87,8 @@
                 'candlestickBar',
                 'sparkline',
                 'discreteBar',
-                'sunburst'
+                'sunburst',
+                'parallelCoordinates'
             ].sort();
             var c = $('#optionlist');
             var jump = $('#optionjump');
@@ -94,24 +106,42 @@
 
                     // build list of sub-components for this chart object
                     var props = Object.getOwnPropertyNames(chart);
-                    var propdom = $('<div></div>');
+                    var propdom = $('<div></div>').addClass('propdom');
                     var proplist = {};
+                    var dispatchList = [];
+
                     for (var p in props) {
                         try {
                             var prop = chart[props[p]];
                             if ((prop instanceof Object) && !(prop instanceof Array) && prop._options) {
                                 proplist[props[p]] = props[p];
                             }
-                        }catch(e) {}
+                        } catch(e) {}
                     }
+
                     // only add sub-component list if some exist.
                     if (Object.keys(proplist).length > 0) {
-                        propdom.append($('<span>Components: </span>'));
+                        propdom.append($('<span class="label">Components: </span>'));
                         var pstrings = [];
                         for (var p in proplist) {
                             pstrings.push('<span class="prop">' + p + '</span>');
                         }
                         propdom.append($(pstrings.join(', ')));
+                    }
+
+                    // add event dispatchers by the chart;
+                    dispatchList = getProps(chart, 'dispatch');
+                    if (dispatchList.length) {
+                        propdom.append($('<br/>'));
+                        propdom.append($('<span class="label">Events: </span>'));
+                        var dispatchString = dispatchList.map(function(dispatcherName) {
+                            return '<span class="event">' + dispatcherName + '</span>';
+                        }).join(' ');
+                        propdom.append(dispatchString);
+                    }
+
+                    if (propdom.children().length) {
+                        propdom.addClass('populated');
                         c.append(propdom);
                     }
 
@@ -178,7 +208,7 @@
                         var desc = option_info[name]['desc'];
                         var def;
                         // if defaultValueGetter exists, it is a function to pull the actual default value from an instance of the chart
-                        if (option_info[name]['defaultValueGetter']) { 
+                        if (option_info[name]['defaultValueGetter']) {
                             var chartName = a.parent().attr('id').substring(3); // first 3 chars are a 'ul_' appended to the chart name
                             def = JSON.stringify(option_info[name]['defaultValueGetter'](nv.models[chartName]()), null, 1);
                         } else {
@@ -700,6 +730,11 @@ as well as used to print out examples using those example inputs.
             default: true,
             examples: [false]
         },
+        interactiveUpdateDelay: {
+            desc: "Advanced option.  This is the delay in milliseconds before updating the interactive elements in a chart.  If set to 0, the interactive components are synchronously updated during the chart's update cycle.  If set to a larger value, then a timeout is created and the interactive elements are updated asynchronously. There is a mild performance advantage to using 0, while the default of 300 is intended to allow smoother animations.",
+            default: 300,
+            examples: [0,300]
+        },
         staggerLabels: {
             desc: "Makes the X labels stagger at different distances from the axis so they're less likely to overlap.",
             default: false,
@@ -776,17 +811,38 @@ as well as used to print out examples using those example inputs.
             examples: [0.85]
         },
         dimensions: {
-            desc: "Deprecated. Use dimensionsNames instead. "
+            desc: "Deprecated. Use dimensionData instead. "
         },
         dimensionNames: {
-            desc: "Name of each dimension, used for each axis.",
-            default: "[]",
-            examples: [["axis1", "axis2", "axis3"]]
+            desc: "Deprecated. Use dimensionData instead. "
         },
         dimensionFormats: {
-            desc: "D3 format for each x axis",
-            default: "Use the default formatter scale.tickFormat",
-            examples: [["%", "", "0.2f"]]
+            desc: "Deprecated. Use dimensionData instead. "
+        },
+        dimensionData: {
+            desc: "Deprecated. Use dimensionData instead. ",
+            default: "[]",
+            examples: [
+            	[
+            	    {key:"P1",format: "0.2f", tooltip: "Parameter 1"},
+	                { key: "P2", format: "%", tooltip: "Parameter 2" }
+	            ]
+	        ]
+        },
+        displayBrush: {
+            desc: "Support brush on axis",
+            default: true,
+            examples: [false]
+        },
+        filters: {
+	    desc: "Contain all informations on active brush",
+            default: "[]",
+            examples: [
+            	[
+            		{dimension: "P1", extent: [0, 1]},
+			        {dimension: "P3", extent: [0.4, 0.8]}
+		        ]
+	        ]
         },
         gravity: {
             desc: "Can be 'n','s','e','w'. Determines how tooltip is positioned.",
@@ -867,6 +923,16 @@ as well as used to print out examples using those example inputs.
             default: "count",
             refs: ["http://bl.ocks.org/kerryrodden/477c1bfb081b783f80ad"],
             examples: ["size"]
+        },
+        groupColorByParent: {
+            desc: "For sunburst only: specifies wether the leaf elements of a parent get the same color as the parent or if they are colored individually.",
+            default: "true",
+            examples: [true, false]
+        },
+        switchYAxisOrder: {
+            desc: "If two Y axis are used, this option changes the order of both axis.",
+            default: "false",
+            examples: [true, false]
         }
     };
 </script>
